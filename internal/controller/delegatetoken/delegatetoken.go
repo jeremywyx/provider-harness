@@ -76,7 +76,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			newServiceFn: newHarnessClient}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))), //nolint:staticcheck // TODO(jbw976) Crossplane needs to update to the new events API, see https://github.com/crossplane/crossplane/issues/7152
 	}
 
 	if o.Features.Enabled(feature.EnableBetaManagementPolicies) {
@@ -204,10 +204,7 @@ func (c *external) Observe(ctx context.Context, cr *v1alpha1.DelegateToken) (man
 	cr.Status.AtProvider.ID = token.ID
 	cr.Status.AtProvider.CreatedAt = &token.Created
 
-	upToDate := true
-	if cr.Spec.ForProvider.TokenStatus != nil && *cr.Spec.ForProvider.TokenStatus != token.TokenStatus {
-		upToDate = false
-	}
+	upToDate := cr.Spec.ForProvider.TokenStatus == nil || *cr.Spec.ForProvider.TokenStatus == token.TokenStatus
 
 	if token.TokenStatus == "ACTIVE" {
 		cr.SetConditions(xpv2.Available())

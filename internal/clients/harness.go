@@ -94,7 +94,7 @@ func (c *Client) request(ctx context.Context, method, path string, query map[str
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
@@ -110,7 +110,7 @@ func (c *Client) request(ctx context.Context, method, path string, query map[str
 // CreateDelegateToken creates a new delegate token.
 func (c *Client) CreateDelegateToken(ctx context.Context, orgID, projectID, name string) (*TokenData, error) {
 	query := map[string]string{
-		"tokenName":   name,
+		"tokenName": name,
 	}
 	if orgID != "" {
 		query["orgIdentifier"] = orgID
