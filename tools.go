@@ -1,3 +1,6 @@
+//go:build tools
+// +build tools
+
 /*
 Copyright 2025 The Crossplane Authors.
 
@@ -14,8 +17,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1alpha1 contains the core resources of the Harness provider.
-// +kubebuilder:object:generate=true
-// +groupName=harness.crossplane.io
-// +versionName=v1alpha1
-package v1alpha1
+package main
+
+import (
+	_ "github.com/crossplane/crossplane-tools/cmd/angryjet"
+	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
+)

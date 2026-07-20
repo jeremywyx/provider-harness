@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mytype
+package delegatetoken
 
 import (
 	"context"
@@ -25,7 +25,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
 
-	"github.com/crossplane/provider-template/apis/sample/v1alpha1"
+	v1alpha1 "github.com/jeremywyx/provider-harness/apis/delegate/v1alpha1"
 )
 
 // Unlike many Kubernetes projects Crossplane does not use third party testing
@@ -43,7 +43,7 @@ func TestObserve(t *testing.T) {
 
 	type args struct {
 		ctx context.Context
-		cr  *v1alpha1.MyType
+		cr  *v1alpha1.DelegateToken
 	}
 
 	type want struct {
