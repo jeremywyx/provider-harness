@@ -1,0 +1,12 @@
+apiVersion: delegate.harness.crossplane.io/v1alpha1
+kind: DelegateToken
+metadata:
+  name: example-delegate-token
+  namespace: default
+spec:
+  forProvider:
+    accountId: YOUR_HARNESS_ACCOUNT_ID
+    # orgId: default
+    # projectId: default
+  writeConnectionSecretToRef:
+    name: example-delegate-token-secret

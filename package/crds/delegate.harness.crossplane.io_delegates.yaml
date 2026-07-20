@@ -4,18 +4,18 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
-  name: mytypes.sample.template.crossplane.io
+  name: delegates.delegate.harness.crossplane.io
 spec:
-  group: sample.template.crossplane.io
+  group: delegate.harness.crossplane.io
   names:
     categories:
     - crossplane
     - managed
-    - template
-    kind: MyType
-    listKind: MyTypeList
-    plural: mytypes
-    singular: mytype
+    - harness
+    kind: Delegate
+    listKind: DelegateList
+    plural: delegates
+    singular: delegate
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: A MyType is an example API type.
+        description: A Delegate is an example API type.
         properties:
           apiVersion:
             description: |-
@@ -54,15 +54,27 @@ spec:
           metadata:
             type: object
           spec:
-            description: A MyTypeSpec defines the desired state of a MyType.
+            description: A DelegateSpec defines the desired state of a Delegate.
             properties:
               forProvider:
-                description: MyTypeParameters are the configurable fields of a MyType.
+                description: DelegateParameters are the configurable fields of a Delegate.
                 properties:
-                  configurableField:
+                  accountId:
+                    description: AccountId is the Harness Account ID.
+                    type: string
+                  delegateIdentifier:
+                    description: DelegateIdentifier is the unique identifier of the
+                      delegate.
+                    type: string
+                  orgId:
+                    description: OrgId is the Harness Organization ID.
+                    type: string
+                  projectId:
+                    description: ProjectId is the Harness Project ID.
                     type: string
                 required:
-                - configurableField
+                - accountId
+                - delegateIdentifier
                 type: object
               managementPolicies:
                 default:
@@ -123,17 +135,27 @@ spec:
             - forProvider
             type: object
           status:
-            description: A MyTypeStatus represents the observed state of a MyType.
+            description: A DelegateStatus represents the observed state of a Delegate.
             properties:
               atProvider:
-                description: MyTypeObservation are the observable fields of a MyType.
+                description: DelegateObservation are the observable fields of a Delegate.
                 properties:
-                  configurableField:
+                  delegateType:
+                    description: DelegateType of the delegate (e.g. KUBERNETES, DOCKER).
                     type: string
-                  observableField:
+                  hostname:
+                    description: Hostname of the delegate.
                     type: string
-                required:
-                - configurableField
+                  id:
+                    description: ID of the delegate.
+                    type: string
+                  status:
+                    description: Status of the delegate (e.g. ENABLED, WAITING_FOR_APPROVAL,
+                      etc).
+                    type: string
+                  version:
+                    description: Version of the delegate.
+                    type: string
                 type: object
               conditions:
                 description: Conditions of the resource.

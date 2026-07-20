@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
-  name: clusterproviderconfigusages.template.crossplane.io
+  name: clusterproviderconfigusages.harness.crossplane.io
 spec:
-  group: template.crossplane.io
+  group: harness.crossplane.io
   names:
     categories:
     - crossplane
     - provider
-    - template
+    - harness
     kind: ClusterProviderConfigUsage
     listKind: ClusterProviderConfigUsageList
     plural: clusterproviderconfigusages

@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
-  name: clusterproviderconfigs.template.crossplane.io
+  name: clusterproviderconfigs.harness.crossplane.io
 spec:
-  group: template.crossplane.io
+  group: harness.crossplane.io
   names:
     categories:
     - crossplane
     - provider
-    - template
+    - harness
     kind: ClusterProviderConfig
     listKind: ClusterProviderConfigList
     plural: clusterproviderconfigs
@@ -29,7 +29,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: A ClusterProviderConfig configures a Template provider.
+        description: A ClusterProviderConfig configures a Harness provider.
         properties:
           apiVersion:
             description: |-
@@ -50,6 +50,9 @@ spec:
             type: object
           spec:
             properties:
+              accountId:
+                description: AccountId is the Harness Account ID.
+                type: string
               credentials:
                 description: Credentials required to authenticate to this provider.
                 properties:
@@ -106,7 +109,11 @@ spec:
                 required:
                 - source
                 type: object
+              endpoint:
+                description: Endpoint is the Harness API Endpoint.
+                type: string
             required:
+            - accountId
             - credentials
             type: object
           status:

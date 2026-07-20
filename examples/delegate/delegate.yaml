@@ -1,0 +1,11 @@
+apiVersion: delegate.harness.crossplane.io/v1alpha1
+kind: Delegate
+metadata:
+  name: example-delegate
+  namespace: default
+spec:
+  forProvider:
+    delegateIdentifier: example-delegate-identifier
+    accountId: YOUR_HARNESS_ACCOUNT_ID
+    # orgId: default
+    # projectId: default
