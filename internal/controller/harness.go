@@ -23,6 +23,8 @@ import (
 	"github.com/jeremywyx/provider-harness/internal/controller/config"
 	"github.com/jeremywyx/provider-harness/internal/controller/delegate"
 	"github.com/jeremywyx/provider-harness/internal/controller/delegatetoken"
+	"github.com/jeremywyx/provider-harness/internal/controller/infrastructure"
+	"github.com/jeremywyx/provider-harness/internal/controller/k8sclusterconnector"
 )
 
 // SetupGated creates all Harness controllers with safe-start support and adds them to
@@ -32,6 +34,8 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 		config.Setup,
 		delegate.SetupGated,
 		delegatetoken.SetupGated,
+		k8sclusterconnector.SetupGated,
+		infrastructure.SetupGated,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err

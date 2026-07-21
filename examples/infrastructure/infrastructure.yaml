@@ -1,0 +1,13 @@
+apiVersion: infrastructure.harness.crossplane.io/v1alpha1
+kind: Infrastructure
+metadata:
+  name: example-k8s-infrastructure
+  namespace: default
+spec:
+  forProvider:
+    accountId: YOUR_HARNESS_ACCOUNT_ID
+    envId: example-environment-id
+    type: KubernetesDirect
+    deploymentType: Kubernetes
+    connectorRef: example-k8s-connector
+    namespace: default
