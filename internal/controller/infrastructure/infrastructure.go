@@ -19,6 +19,10 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
@@ -169,6 +173,26 @@ type external struct {
 	service interface{}
 }
 
+func getIdentifier(cr resource.Object) string {
+	name := meta.GetExternalName(cr)
+	if name == "" {
+		name = cr.GetName()
+	}
+	return strings.ReplaceAll(name, "-", "_")
+}
+
+func sanitizeConnectorRef(ref string) string {
+	if strings.HasPrefix(ref, "account.") {
+		id := strings.TrimPrefix(ref, "account.")
+		return "account." + strings.ReplaceAll(id, "-", "_")
+	}
+	if strings.HasPrefix(ref, "org.") {
+		id := strings.TrimPrefix(ref, "org.")
+		return "org." + strings.ReplaceAll(id, "-", "_")
+	}
+	return strings.ReplaceAll(ref, "-", "_")
+}
+
 func generateInfrastructurePayload(cr *v1alpha1.Infrastructure) *clients.InfrastructureData {
 	orgID := ""
 	if cr.Spec.ForProvider.OrgId != nil {
@@ -179,37 +203,39 @@ func generateInfrastructurePayload(cr *v1alpha1.Infrastructure) *clients.Infrast
 		projectID = *cr.Spec.ForProvider.ProjectId
 	}
 
-	identifier := meta.GetExternalName(cr)
-	if identifier == "" {
-		identifier = cr.GetName()
+	identifier := getIdentifier(cr)
+	connectorRef := sanitizeConnectorRef(cr.Spec.ForProvider.ConnectorRef)
+
+	var yamlStr string
+	if cr.Spec.ForProvider.Yaml != nil {
+		yamlStr = *cr.Spec.ForProvider.Yaml
+	} else {
+		yamlLines := []string{
+			"infrastructureDefinition:",
+			fmt.Sprintf("  name: %s", cr.GetName()),
+			fmt.Sprintf("  identifier: %s", identifier),
+			"  description: \"\"",
+		}
+		if orgID != "" {
+			yamlLines = append(yamlLines, fmt.Sprintf("  orgIdentifier: %s", orgID))
+		}
+		if projectID != "" {
+			yamlLines = append(yamlLines, fmt.Sprintf("  projectIdentifier: %s", projectID))
+		}
+		yamlLines = append(yamlLines,
+			fmt.Sprintf("  environmentRef: %s", cr.Spec.ForProvider.EnvId),
+			fmt.Sprintf("  deploymentType: %s", cr.Spec.ForProvider.DeploymentType),
+			fmt.Sprintf("  type: %s", cr.Spec.ForProvider.Type),
+			"  spec:",
+			fmt.Sprintf("    connectorRef: %s", connectorRef),
+			fmt.Sprintf("    namespace: %s", cr.Spec.ForProvider.Namespace),
+			fmt.Sprintf("    releaseName: release-%s", identifier),
+		)
+		if cr.Spec.ForProvider.AllowSimultaneousDeployments != nil {
+			yamlLines = append(yamlLines, fmt.Sprintf("  allowSimultaneousDeployments: %t", *cr.Spec.ForProvider.AllowSimultaneousDeployments))
+		}
+		yamlStr = strings.Join(yamlLines, "\n")
 	}
-
-	yamlTemplate := `infrastructureDefinition:
-  name: %s
-  identifier: %s
-  description: ""
-  orgIdentifier: %s
-  projectIdentifier: %s
-  environmentRef: %s
-  deploymentType: %s
-  type: %s
-  spec:
-    connectorRef: %s
-    namespace: %s
-    releaseName: release-%s`
-
-	yamlStr := fmt.Sprintf(yamlTemplate,
-		cr.GetName(),
-		identifier,
-		orgID,
-		projectID,
-		cr.Spec.ForProvider.EnvId,
-		cr.Spec.ForProvider.DeploymentType,
-		cr.Spec.ForProvider.Type,
-		cr.Spec.ForProvider.ConnectorRef,
-		cr.Spec.ForProvider.Namespace,
-		identifier,
-	)
 
 	return &clients.InfrastructureData{
 		Name:              cr.GetName(),
@@ -223,12 +249,20 @@ func generateInfrastructurePayload(cr *v1alpha1.Infrastructure) *clients.Infrast
 	}
 }
 
+func isInfrastructureUpToDate(localYaml, remoteYaml string) bool {
+	var localMap, remoteMap map[string]any
+	if err := yaml.Unmarshal([]byte(localYaml), &localMap); err != nil {
+		return false
+	}
+	if err := yaml.Unmarshal([]byte(remoteYaml), &remoteMap); err != nil {
+		return false
+	}
+	return reflect.DeepEqual(localMap, remoteMap)
+}
+
 func (c *external) Observe(ctx context.Context, cr *v1alpha1.Infrastructure) (managed.ExternalObservation, error) {
 	client := c.service.(*clients.Client)
-	infraName := meta.GetExternalName(cr)
-	if infraName == "" {
-		infraName = cr.GetName()
-	}
+	infraName := getIdentifier(cr)
 
 	orgID := ""
 	if cr.Spec.ForProvider.OrgId != nil {
@@ -254,7 +288,8 @@ func (c *external) Observe(ctx context.Context, cr *v1alpha1.Infrastructure) (ma
 	cr.Status.AtProvider.ID = infra.Identifier
 	cr.SetConditions(xpv2.Available())
 
-	upToDate := true
+	localPayload := generateInfrastructurePayload(cr)
+	upToDate := isInfrastructureUpToDate(localPayload.Yaml, infra.Yaml)
 
 	return managed.ExternalObservation{
 		ResourceExists:    true,
@@ -317,7 +352,8 @@ func (c *external) Delete(ctx context.Context, cr *v1alpha1.Infrastructure) (man
 		projectID = *cr.Spec.ForProvider.ProjectId
 	}
 
-	err := client.DeleteInfrastructure(ctx, orgID, projectID, cr.Spec.ForProvider.EnvId, cr.Status.AtProvider.ID)
+	identifier := getIdentifier(cr)
+	err := client.DeleteInfrastructure(ctx, orgID, projectID, cr.Spec.ForProvider.EnvId, identifier)
 	if err != nil {
 		return managed.ExternalDelete{}, err
 	}

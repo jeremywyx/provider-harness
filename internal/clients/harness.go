@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -78,18 +79,14 @@ type ConnectorData struct {
 
 // K8sClusterConnectorSpec is the spec for a K8sCluster connector.
 type K8sClusterConnectorSpec struct {
-	Credential CredentialWrapper `json:"credential"`
+	Credential        CredentialWrapper `json:"credential"`
+	DelegateSelectors []string          `json:"delegateSelectors,omitempty"`
 }
 
 // CredentialWrapper wraps credential configuration.
 type CredentialWrapper struct {
 	Type string `json:"type"` // "InheritFromDelegate" or "ManualConfig"
-	Spec any    `json:"spec"` // e.g. InheritFromDelegateSpec or ManualConfigSpec
-}
-
-// InheritFromDelegateSpec specifies inheritance from a delegate.
-type InheritFromDelegateSpec struct {
-	DelegateSelectors []string `json:"delegateSelectors"`
+	Spec any    `json:"spec,omitempty"`
 }
 
 // ManualConfigSpec specifies manual config details.
@@ -122,7 +119,7 @@ type InfrastructureData struct {
 
 // InfrastructureRequest envelopes an Infrastructure request.
 type InfrastructureRequest struct {
-	Infrastructure InfrastructureData `json:"infrastructure"`
+	Yaml string `json:"yaml"`
 }
 
 // InfrastructureResponse envelopes an Infrastructure response.
@@ -327,6 +324,9 @@ func (c *Client) GetConnector(ctx context.Context, orgID, projectID, identifier 
 	path := fmt.Sprintf("/ng/api/connectors/%s", identifier)
 	err := c.request(ctx, "GET", path, query, nil, &resp)
 	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &resp.Resource, nil
@@ -367,7 +367,9 @@ func (c *Client) DeleteConnector(ctx context.Context, orgID, projectID, identifi
 
 // CreateInfrastructure creates a new infrastructure definition.
 func (c *Client) CreateInfrastructure(ctx context.Context, orgID, projectID string, infra *InfrastructureData) (*InfrastructureData, error) {
-	query := map[string]string{}
+	query := map[string]string{
+		"environmentIdentifier": infra.EnvironmentRef,
+	}
 	if orgID != "" {
 		query["orgIdentifier"] = orgID
 	}
@@ -376,7 +378,7 @@ func (c *Client) CreateInfrastructure(ctx context.Context, orgID, projectID stri
 	}
 
 	var resp InfrastructureResponse
-	reqBody := InfrastructureRequest{Infrastructure: *infra}
+	reqBody := InfrastructureRequest{Yaml: infra.Yaml}
 	err := c.request(ctx, "POST", "/ng/api/infrastructures", query, &reqBody, &resp)
 	if err != nil {
 		return nil, err
@@ -387,7 +389,7 @@ func (c *Client) CreateInfrastructure(ctx context.Context, orgID, projectID stri
 // GetInfrastructure retrieves an infrastructure definition.
 func (c *Client) GetInfrastructure(ctx context.Context, orgID, projectID, envID, identifier string) (*InfrastructureData, error) {
 	query := map[string]string{
-		"environmentRef": envID,
+		"environmentIdentifier": envID,
 	}
 	if orgID != "" {
 		query["orgIdentifier"] = orgID
@@ -400,6 +402,9 @@ func (c *Client) GetInfrastructure(ctx context.Context, orgID, projectID, envID,
 	path := fmt.Sprintf("/ng/api/infrastructures/%s", identifier)
 	err := c.request(ctx, "GET", path, query, nil, &resp)
 	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &resp.Resource, nil
@@ -407,7 +412,9 @@ func (c *Client) GetInfrastructure(ctx context.Context, orgID, projectID, envID,
 
 // UpdateInfrastructure updates an infrastructure definition.
 func (c *Client) UpdateInfrastructure(ctx context.Context, orgID, projectID string, infra *InfrastructureData) (*InfrastructureData, error) {
-	query := map[string]string{}
+	query := map[string]string{
+		"environmentIdentifier": infra.EnvironmentRef,
+	}
 	if orgID != "" {
 		query["orgIdentifier"] = orgID
 	}
@@ -416,7 +423,7 @@ func (c *Client) UpdateInfrastructure(ctx context.Context, orgID, projectID stri
 	}
 
 	var resp InfrastructureResponse
-	reqBody := InfrastructureRequest{Infrastructure: *infra}
+	reqBody := InfrastructureRequest{Yaml: infra.Yaml}
 	err := c.request(ctx, "PUT", "/ng/api/infrastructures", query, &reqBody, &resp)
 	if err != nil {
 		return nil, err
@@ -427,7 +434,7 @@ func (c *Client) UpdateInfrastructure(ctx context.Context, orgID, projectID stri
 // DeleteInfrastructure deletes an infrastructure definition.
 func (c *Client) DeleteInfrastructure(ctx context.Context, orgID, projectID, envID, identifier string) error {
 	query := map[string]string{
-		"environmentRef": envID,
+		"environmentIdentifier": envID,
 	}
 	if orgID != "" {
 		query["orgIdentifier"] = orgID
@@ -438,4 +445,16 @@ func (c *Client) DeleteInfrastructure(ctx context.Context, orgID, projectID, env
 
 	path := fmt.Sprintf("/ng/api/infrastructures/%s", identifier)
 	return c.request(ctx, "DELETE", path, query, nil, nil)
+}
+
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "RESOURCE_NOT_FOUND_EXCEPTION") ||
+		strings.Contains(errStr, "not found") ||
+		strings.Contains(errStr, "status 404") ||
+		strings.Contains(errStr, "404:") ||
+		strings.Contains(errStr, "400:") && (strings.Contains(errStr, "not found") || strings.Contains(errStr, "NOT_FOUND"))
 }

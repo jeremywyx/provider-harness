@@ -18,6 +18,9 @@ package k8sclusterconnector
 
 import (
 	"context"
+	"encoding/json"
+	"reflect"
+	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
@@ -168,6 +171,14 @@ type external struct {
 	service interface{}
 }
 
+func getIdentifier(cr resource.Object) string {
+	name := meta.GetExternalName(cr)
+	if name == "" {
+		name = cr.GetName()
+	}
+	return strings.ReplaceAll(name, "-", "_")
+}
+
 func generateConnectorPayload(cr *v1alpha1.K8sClusterConnector) *clients.ConnectorData {
 	orgID := ""
 	if cr.Spec.ForProvider.OrgId != nil {
@@ -182,20 +193,16 @@ func generateConnectorPayload(cr *v1alpha1.K8sClusterConnector) *clients.Connect
 		description = *cr.Spec.ForProvider.Description
 	}
 
-	identifier := meta.GetExternalName(cr)
-	if identifier == "" {
-		identifier = cr.GetName()
-	}
+	identifier := getIdentifier(cr)
 
 	var spec any
 	if cr.Spec.ForProvider.CredentialType == "InheritFromDelegate" {
 		spec = clients.K8sClusterConnectorSpec{
 			Credential: clients.CredentialWrapper{
 				Type: "InheritFromDelegate",
-				Spec: clients.InheritFromDelegateSpec{
-					DelegateSelectors: cr.Spec.ForProvider.DelegateSelectors,
-				},
+				Spec: nil,
 			},
+			DelegateSelectors: cr.Spec.ForProvider.DelegateSelectors,
 		}
 	} else {
 		masterUrl := ""
@@ -223,12 +230,31 @@ func generateConnectorPayload(cr *v1alpha1.K8sClusterConnector) *clients.Connect
 	}
 }
 
+func isConnectorUpToDate(local, remote *clients.ConnectorData) bool {
+	if local.Name != remote.Name || local.Description != remote.Description {
+		return false
+	}
+
+	localJSON, err1 := json.Marshal(local.Spec)
+	remoteJSON, err2 := json.Marshal(remote.Spec)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+
+	var localSpec, remoteSpec map[string]any
+	if err := json.Unmarshal(localJSON, &localSpec); err != nil {
+		return false
+	}
+	if err := json.Unmarshal(remoteJSON, &remoteSpec); err != nil {
+		return false
+	}
+
+	return reflect.DeepEqual(localSpec, remoteSpec)
+}
+
 func (c *external) Observe(ctx context.Context, cr *v1alpha1.K8sClusterConnector) (managed.ExternalObservation, error) {
 	client := c.service.(*clients.Client)
-	connectorName := meta.GetExternalName(cr)
-	if connectorName == "" {
-		connectorName = cr.GetName()
-	}
+	connectorName := getIdentifier(cr)
 
 	orgID := ""
 	if cr.Spec.ForProvider.OrgId != nil {
@@ -254,7 +280,8 @@ func (c *external) Observe(ctx context.Context, cr *v1alpha1.K8sClusterConnector
 	cr.Status.AtProvider.ID = connector.Identifier
 	cr.SetConditions(xpv2.Available())
 
-	upToDate := true
+	localPayload := generateConnectorPayload(cr)
+	upToDate := isConnectorUpToDate(localPayload, connector)
 
 	return managed.ExternalObservation{
 		ResourceExists:    true,
@@ -298,7 +325,8 @@ func (c *external) Update(ctx context.Context, cr *v1alpha1.K8sClusterConnector)
 	}
 
 	payload := generateConnectorPayload(cr)
-	_, err := client.UpdateConnector(ctx, orgID, projectID, cr.Status.AtProvider.ID, payload)
+	identifier := getIdentifier(cr)
+	_, err := client.UpdateConnector(ctx, orgID, projectID, identifier, payload)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
@@ -317,7 +345,8 @@ func (c *external) Delete(ctx context.Context, cr *v1alpha1.K8sClusterConnector)
 		projectID = *cr.Spec.ForProvider.ProjectId
 	}
 
-	err := client.DeleteConnector(ctx, orgID, projectID, cr.Status.AtProvider.ID)
+	identifier := getIdentifier(cr)
+	err := client.DeleteConnector(ctx, orgID, projectID, identifier)
 	if err != nil {
 		return managed.ExternalDelete{}, err
 	}

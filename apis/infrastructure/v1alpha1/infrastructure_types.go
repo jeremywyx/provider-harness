@@ -52,6 +52,14 @@ type InfrastructureParameters struct {
 
 	// Namespace is the target Kubernetes namespace in the cluster.
 	Namespace string `json:"namespace"`
+
+	// Yaml is an optional raw Harness Infrastructure Definition YAML string override.
+	// +optional
+	Yaml *string `json:"yaml,omitempty"`
+
+	// AllowSimultaneousDeployments allows simultaneous deployments.
+	// +optional
+	AllowSimultaneousDeployments *bool `json:"allowSimultaneousDeployments,omitempty"`
 }
 
 // InfrastructureObservation are the observable fields of a Infrastructure.

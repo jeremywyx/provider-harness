@@ -63,6 +63,10 @@ spec:
                   accountId:
                     description: AccountId is the Harness Account ID.
                     type: string
+                  allowSimultaneousDeployments:
+                    description: AllowSimultaneousDeployments allows simultaneous
+                      deployments.
+                    type: boolean
                   connectorRef:
                     description: ConnectorRef is the Harness Connector identifier
                       to use.
@@ -87,6 +91,10 @@ spec:
                     type: string
                   type:
                     description: Type represents the infrastructure type, e.g. KubernetesDirect.
+                    type: string
+                  yaml:
+                    description: Yaml is an optional raw Harness Infrastructure Definition
+                      YAML string override.
                     type: string
                 required:
                 - accountId
