@@ -20,7 +20,9 @@ package apis
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
+	connectorv1alpha1 "github.com/jeremywyx/provider-harness/apis/connector/v1alpha1"
 	delegatev1alpha1 "github.com/jeremywyx/provider-harness/apis/delegate/v1alpha1"
+	infrastructurev1alpha1 "github.com/jeremywyx/provider-harness/apis/infrastructure/v1alpha1"
 	harnessv1alpha1 "github.com/jeremywyx/provider-harness/apis/v1alpha1"
 )
 
@@ -29,6 +31,8 @@ func init() {
 	AddToSchemes = append(AddToSchemes,
 		harnessv1alpha1.SchemeBuilder.AddToScheme,
 		delegatev1alpha1.SchemeBuilder.AddToScheme,
+		connectorv1alpha1.SchemeBuilder.AddToScheme,
+		infrastructurev1alpha1.SchemeBuilder.AddToScheme,
 	)
 }
 

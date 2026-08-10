@@ -4,6 +4,7 @@ metadata:
   name: example-delegate
   namespace: default
 spec:
+  managementPolicies: ["Observe"]
   forProvider:
     delegateIdentifier: example-delegate-identifier
     accountId: YOUR_HARNESS_ACCOUNT_ID

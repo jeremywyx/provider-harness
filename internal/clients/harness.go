@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -63,6 +64,67 @@ type DelegateData struct {
 // DelegateListResponse envelopes a list delegate response.
 type DelegateListResponse struct {
 	Resource []DelegateData `json:"resource"`
+}
+
+// ConnectorData is the payload for a Harness Connector.
+type ConnectorData struct {
+	Name              string `json:"name"`
+	Identifier        string `json:"identifier"`
+	Description       string `json:"description,omitempty"`
+	OrgIdentifier     string `json:"orgIdentifier,omitempty"`
+	ProjectIdentifier string `json:"projectIdentifier,omitempty"`
+	Type              string `json:"type"` // e.g. "K8sCluster"
+	Spec              any    `json:"spec"` // e.g. K8sClusterConnectorSpec
+}
+
+// K8sClusterConnectorSpec is the spec for a K8sCluster connector.
+type K8sClusterConnectorSpec struct {
+	Credential        CredentialWrapper `json:"credential"`
+	DelegateSelectors []string          `json:"delegateSelectors,omitempty"`
+}
+
+// CredentialWrapper wraps credential configuration.
+type CredentialWrapper struct {
+	Type string `json:"type"` // "InheritFromDelegate" or "ManualConfig"
+	Spec any    `json:"spec,omitempty"`
+}
+
+// ManualConfigSpec specifies manual config details.
+type ManualConfigSpec struct {
+	MasterUrl string `json:"masterUrl"`
+}
+
+// ConnectorRequest envelopes a Connector request.
+type ConnectorRequest struct {
+	Connector ConnectorData `json:"connector"`
+}
+
+// ConnectorResponse envelopes a Connector response.
+type ConnectorResponse struct {
+	Resource ConnectorData `json:"resource"`
+}
+
+// InfrastructureData is the payload for a Harness Infrastructure Definition.
+type InfrastructureData struct {
+	Name              string `json:"name"`
+	Identifier        string `json:"identifier"`
+	Description       string `json:"description,omitempty"`
+	OrgIdentifier     string `json:"orgIdentifier,omitempty"`
+	ProjectIdentifier string `json:"projectIdentifier,omitempty"`
+	EnvironmentRef    string `json:"environmentRef"`
+	Type              string `json:"type"`           // "KubernetesDirect"
+	DeploymentType    string `json:"deploymentType"` // "Kubernetes"
+	Yaml              string `json:"yaml,omitempty"`
+}
+
+// InfrastructureRequest envelopes an Infrastructure request.
+type InfrastructureRequest struct {
+	Yaml string `json:"yaml"`
+}
+
+// InfrastructureResponse envelopes an Infrastructure response.
+type InfrastructureResponse struct {
+	Resource InfrastructureData `json:"resource"`
 }
 
 func (c *Client) request(ctx context.Context, method, path string, query map[string]string, body any, target any) error {
@@ -227,4 +289,172 @@ func (c *Client) DeleteDelegate(ctx context.Context, orgID, projectID, identifie
 
 	path := fmt.Sprintf("/ng/api/delegate-setup/delegate/%s", identifier)
 	return c.request(ctx, "DELETE", path, query, nil, nil)
+}
+
+// CreateConnector creates a new Harness connector.
+func (c *Client) CreateConnector(ctx context.Context, orgID, projectID string, connector *ConnectorData) (*ConnectorData, error) {
+	query := map[string]string{}
+	if orgID != "" {
+		query["orgIdentifier"] = orgID
+	}
+	if projectID != "" {
+		query["projectIdentifier"] = projectID
+	}
+
+	var resp ConnectorResponse
+	reqBody := ConnectorRequest{Connector: *connector}
+	err := c.request(ctx, "POST", "/ng/api/connectors", query, &reqBody, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Resource, nil
+}
+
+// GetConnector retrieves a Harness connector.
+func (c *Client) GetConnector(ctx context.Context, orgID, projectID, identifier string) (*ConnectorData, error) {
+	query := map[string]string{}
+	if orgID != "" {
+		query["orgIdentifier"] = orgID
+	}
+	if projectID != "" {
+		query["projectIdentifier"] = projectID
+	}
+
+	var resp ConnectorResponse
+	path := fmt.Sprintf("/ng/api/connectors/%s", identifier)
+	err := c.request(ctx, "GET", path, query, nil, &resp)
+	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &resp.Resource, nil
+}
+
+// UpdateConnector updates a Harness connector.
+func (c *Client) UpdateConnector(ctx context.Context, orgID, projectID, identifier string, connector *ConnectorData) (*ConnectorData, error) {
+	query := map[string]string{}
+	if orgID != "" {
+		query["orgIdentifier"] = orgID
+	}
+	if projectID != "" {
+		query["projectIdentifier"] = projectID
+	}
+
+	var resp ConnectorResponse
+	reqBody := ConnectorRequest{Connector: *connector}
+	err := c.request(ctx, "PUT", "/ng/api/connectors", query, &reqBody, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Resource, nil
+}
+
+// DeleteConnector deletes a Harness connector.
+func (c *Client) DeleteConnector(ctx context.Context, orgID, projectID, identifier string) error {
+	query := map[string]string{}
+	if orgID != "" {
+		query["orgIdentifier"] = orgID
+	}
+	if projectID != "" {
+		query["projectIdentifier"] = projectID
+	}
+
+	path := fmt.Sprintf("/ng/api/connectors/%s", identifier)
+	return c.request(ctx, "DELETE", path, query, nil, nil)
+}
+
+// CreateInfrastructure creates a new infrastructure definition.
+func (c *Client) CreateInfrastructure(ctx context.Context, orgID, projectID string, infra *InfrastructureData) (*InfrastructureData, error) {
+	query := map[string]string{
+		"environmentIdentifier": infra.EnvironmentRef,
+	}
+	if orgID != "" {
+		query["orgIdentifier"] = orgID
+	}
+	if projectID != "" {
+		query["projectIdentifier"] = projectID
+	}
+
+	var resp InfrastructureResponse
+	reqBody := InfrastructureRequest{Yaml: infra.Yaml}
+	err := c.request(ctx, "POST", "/ng/api/infrastructures", query, &reqBody, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Resource, nil
+}
+
+// GetInfrastructure retrieves an infrastructure definition.
+func (c *Client) GetInfrastructure(ctx context.Context, orgID, projectID, envID, identifier string) (*InfrastructureData, error) {
+	query := map[string]string{
+		"environmentIdentifier": envID,
+	}
+	if orgID != "" {
+		query["orgIdentifier"] = orgID
+	}
+	if projectID != "" {
+		query["projectIdentifier"] = projectID
+	}
+
+	var resp InfrastructureResponse
+	path := fmt.Sprintf("/ng/api/infrastructures/%s", identifier)
+	err := c.request(ctx, "GET", path, query, nil, &resp)
+	if err != nil {
+		if isNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &resp.Resource, nil
+}
+
+// UpdateInfrastructure updates an infrastructure definition.
+func (c *Client) UpdateInfrastructure(ctx context.Context, orgID, projectID string, infra *InfrastructureData) (*InfrastructureData, error) {
+	query := map[string]string{
+		"environmentIdentifier": infra.EnvironmentRef,
+	}
+	if orgID != "" {
+		query["orgIdentifier"] = orgID
+	}
+	if projectID != "" {
+		query["projectIdentifier"] = projectID
+	}
+
+	var resp InfrastructureResponse
+	reqBody := InfrastructureRequest{Yaml: infra.Yaml}
+	err := c.request(ctx, "PUT", "/ng/api/infrastructures", query, &reqBody, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Resource, nil
+}
+
+// DeleteInfrastructure deletes an infrastructure definition.
+func (c *Client) DeleteInfrastructure(ctx context.Context, orgID, projectID, envID, identifier string) error {
+	query := map[string]string{
+		"environmentIdentifier": envID,
+	}
+	if orgID != "" {
+		query["orgIdentifier"] = orgID
+	}
+	if projectID != "" {
+		query["projectIdentifier"] = projectID
+	}
+
+	path := fmt.Sprintf("/ng/api/infrastructures/%s", identifier)
+	return c.request(ctx, "DELETE", path, query, nil, nil)
+}
+
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "RESOURCE_NOT_FOUND_EXCEPTION") ||
+		strings.Contains(errStr, "not found") ||
+		strings.Contains(errStr, "status 404") ||
+		strings.Contains(errStr, "404:") ||
+		strings.Contains(errStr, "400:") && (strings.Contains(errStr, "not found") || strings.Contains(errStr, "NOT_FOUND"))
 }

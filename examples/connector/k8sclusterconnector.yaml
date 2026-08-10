@@ -1,0 +1,11 @@
+apiVersion: connector.harness.crossplane.io/v1alpha1
+kind: K8sClusterConnector
+metadata:
+  name: example-k8s-connector
+  namespace: default
+spec:
+  forProvider:
+    accountId: YOUR_HARNESS_ACCOUNT_ID
+    credentialType: InheritFromDelegate
+    delegateSelectors:
+      - example-delegate-identifier
