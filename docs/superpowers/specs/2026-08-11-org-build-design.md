@@ -28,7 +28,7 @@ submodule required for the image build, all network touchpoints parameterized.
 
 **Stage 1 — builder:**
 
-- Base: `${BASE_REGISTRY}/golang:1.25.11` (default `gcr.io`)
+- Base: `${GOLANG_IMAGE}` (default `docker.io/library/golang:1.25.11`)
 - Build args: `GOPROXY` (default `https://proxy.golang.org,direct`), `GOSUMDB`
   (default `sum.golang.org`), `GONOSUMDB` (default empty), `MODULE_PATH`
   (default `github.com/jeremywyx/provider-harness`), `VERSION` (default `0.0.0`)
@@ -40,13 +40,16 @@ submodule required for the image build, all network touchpoints parameterized.
 
 **Stage 2 — runtime:**
 
-- Base: `${BASE_REGISTRY}/distroless/static` pinned to the current digest
-  `sha256:d9f9472a8f4541368192d714a995eb1a99bab1f7071fc8bde261d7eda3b667d8`
+- Base: `${RUNTIME_IMAGE}` (default `gcr.io/distroless/static` pinned to the current
+  digest `sha256:d9f9472a8f4541368192d714a995eb1a99bab1f7071fc8bde261d7eda3b667d8`)
 - `COPY --from=builder /out/harness-provider /usr/local/bin/harness-provider`
 - `USER 65532`, `ENTRYPOINT ["harness-provider"]`
 
 Rationale:
 
+- `GOLANG_IMAGE` and `RUNTIME_IMAGE` are declared at global scope (before the first
+  `FROM`) — BuildKit only applies an ARG's default value to a `FROM` line when the
+  ARG is declared before the first `FROM`.
 - Builder stage needs no network beyond the Go module proxy; `go mod download`
   flows through `GOPROXY` / `GOSUMDB` / `GONOSUMDB` args so private proxies and
   private module paths work in restricted networks.
@@ -70,7 +73,8 @@ Env vars (all optional, defaults shown):
 | `IMAGE_NAME` | `provider-harness` |
 | `TAG` | `git describe --always --dirty` or `dev` |
 | `PLATFORMS` | `linux/amd64,linux/arm64` |
-| `BASE_REGISTRY` | `gcr.io` |
+| `GOLANG_IMAGE` | `docker.io/library/golang:1.25.11` |
+| `RUNTIME_IMAGE` | `gcr.io/distroless/static@sha256:d9f9472a8f4541368192d714a995eb1a99bab1f7071fc8bde261d7eda3b667d8` |
 | `GOPROXY` | `https://proxy.golang.org,direct` |
 | `GOSUMDB` | `sum.golang.org` |
 | `GONOSUMDB` | `` |

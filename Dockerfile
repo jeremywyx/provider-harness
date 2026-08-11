@@ -1,7 +1,9 @@
 # Build stage: compiles the provider binary inside the image.
 # All network access flows through the Go module proxy (GOPROXY/GOSUMDB).
-ARG BASE_REGISTRY=gcr.io
-FROM ${BASE_REGISTRY}/golang:1.25.11 AS builder
+# ARGs used in a FROM must be declared at global scope (before the first FROM).
+ARG GOLANG_IMAGE=docker.io/library/golang:1.25.11
+ARG RUNTIME_IMAGE=gcr.io/distroless/static@sha256:d9f9472a8f4541368192d714a995eb1a99bab1f7071fc8bde261d7eda3b667d8
+FROM ${GOLANG_IMAGE} AS builder
 
 ARG GOPROXY=https://proxy.golang.org,direct
 ARG GOSUMDB=sum.golang.org
@@ -21,8 +23,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     -o /out/harness-provider ./cmd/provider
 
 # Runtime stage: minimal distroless image.
-ARG BASE_REGISTRY=gcr.io
-FROM ${BASE_REGISTRY}/distroless/static@sha256:d9f9472a8f4541368192d714a995eb1a99bab1f7071fc8bde261d7eda3b667d8
+FROM ${RUNTIME_IMAGE}
 
 COPY --from=builder /out/harness-provider /usr/local/bin/harness-provider
 

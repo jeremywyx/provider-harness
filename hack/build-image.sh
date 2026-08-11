@@ -9,7 +9,8 @@ set -euo pipefail
 #   IMAGE_NAME      image name (default: provider-harness)
 #   TAG             image tag (default: git describe --always --dirty)
 #   PLATFORMS       build platforms (default: linux/amd64,linux/arm64)
-#   BASE_REGISTRY   registry hosting golang/distroless base images (default: gcr.io)
+#   GOLANG_IMAGE    builder base image (default: docker.io/library/golang:1.25.11)
+#   RUNTIME_IMAGE   runtime base image (default: gcr.io/distroless/static@sha256:d9f9472a...b667d8)
 #   GOPROXY         Go module proxy (default: https://proxy.golang.org,direct)
 #   GOSUMDB         Go checksum db (default: sum.golang.org)
 #   GONOSUMDB       comma-separated module paths exempt from the checksum db
@@ -24,7 +25,8 @@ REGISTRY=${REGISTRY:-local}
 IMAGE_NAME=${IMAGE_NAME:-provider-harness}
 TAG=${TAG:-$(git describe --always --dirty 2>/dev/null || echo dev)}
 PLATFORMS=${PLATFORMS:-linux/amd64,linux/arm64}
-BASE_REGISTRY=${BASE_REGISTRY:-gcr.io}
+GOLANG_IMAGE=${GOLANG_IMAGE:-docker.io/library/golang:1.25.11}
+RUNTIME_IMAGE=${RUNTIME_IMAGE:-gcr.io/distroless/static@sha256:d9f9472a8f4541368192d714a995eb1a99bab1f7071fc8bde261d7eda3b667d8}
 GOPROXY=${GOPROXY:-https://proxy.golang.org,direct}
 GOSUMDB=${GOSUMDB:-sum.golang.org}
 GONOSUMDB=${GONOSUMDB:-""}
@@ -44,7 +46,8 @@ IMAGE_REF="${REGISTRY}/${IMAGE_NAME}:${TAG}"
 docker buildx build ${BUILD_ARGS} \
   --platform "${PLATFORMS}" \
   -t "${IMAGE_REF}" \
-  --build-arg BASE_REGISTRY="${BASE_REGISTRY}" \
+  --build-arg GOLANG_IMAGE="${GOLANG_IMAGE}" \
+  --build-arg RUNTIME_IMAGE="${RUNTIME_IMAGE}" \
   --build-arg GOPROXY="${GOPROXY}" \
   --build-arg GOSUMDB="${GOSUMDB}" \
   --build-arg GONOSUMDB="${GONOSUMDB}" \
