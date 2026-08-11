@@ -104,7 +104,14 @@ dev-clean: $(KIND) $(KUBECTL)
 	@$(INFO) Deleting kind cluster
 	@$(KIND) delete cluster --name=$(PROJECT_NAME)-dev
 
-.PHONY: submodules fallthrough test-integration run dev dev-clean
+# Build the provider container image using the self-contained multi-stage
+# Dockerfile. Unlike the other targets this does not require the build/
+# submodule to be initialized. All registry/proxy settings come from the
+# environment (see hack/build-image.sh).
+build-image:
+	@./hack/build-image.sh
+
+.PHONY: submodules fallthrough test-integration run dev dev-clean build-image
 
 # ====================================================================================
 # Special Targets
