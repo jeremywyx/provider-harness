@@ -16,6 +16,9 @@ set -euo pipefail
 #   MODULE_PATH     Go module path for the -X version ldflag (default: current module)
 #   VERSION         version baked into the binary (default: $TAG)
 #   BUILD_ARGS      extra docker buildx args, e.g. "--push" (default: --load)
+#
+#   NOTE: building for non-native architectures (e.g. linux/arm64 on an amd64
+#   host) requires QEMU/binfmt emulation on the build host.
 
 REGISTRY=${REGISTRY:-local}
 IMAGE_NAME=${IMAGE_NAME:-provider-harness}
@@ -28,6 +31,13 @@ GONOSUMDB=${GONOSUMDB:-""}
 MODULE_PATH=${MODULE_PATH:-$(go list -m 2>/dev/null || echo github.com/jeremywyx/provider-harness)}
 VERSION=${VERSION:-$TAG}
 BUILD_ARGS=${BUILD_ARGS:---load}
+
+# docker buildx cannot export multi-platform manifests with --load.
+if [[ "${BUILD_ARGS}" == *"--load"* ]] && [[ "${PLATFORMS}" == *","* ]]; then
+	echo "error: BUILD_ARGS=--load cannot be combined with multiple PLATFORMS (docker buildx cannot export a manifest list with --load)." >&2
+	echo "Set PLATFORMS to a single platform (e.g. PLATFORMS=linux/amd64) or use BUILD_ARGS=--push." >&2
+	exit 1
+fi
 
 IMAGE_REF="${REGISTRY}/${IMAGE_NAME}:${TAG}"
 
