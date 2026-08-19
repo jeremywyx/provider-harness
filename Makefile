@@ -111,7 +111,16 @@ dev-clean: $(KIND) $(KUBECTL)
 build-image:
 	@./hack/build-image.sh
 
-.PHONY: submodules fallthrough test-integration run dev dev-clean build-image
+build-xpkg:
+	@./hack/build-xpkg.sh
+
+install-local:
+	@./hack/install-local.sh
+
+local-clean:
+	@./hack/clean-local.sh
+
+.PHONY: submodules fallthrough test-integration run dev dev-clean build-image build-xpkg install-local local-clean
 
 # ====================================================================================
 # Special Targets
