@@ -120,7 +120,12 @@ install-local:
 local-clean:
 	@./hack/clean-local.sh
 
-.PHONY: submodules fallthrough test-integration run dev dev-clean build-image build-xpkg install-local local-clean
+# Regenerate the committed flattened package manifest (package.yaml) from
+# package/. Requires the pinned Crossplane CLI (see hack/build-xpkg.sh).
+xpkg-yaml:
+	@./hack/generate-package-yaml.sh
+
+.PHONY: submodules fallthrough test-integration run dev dev-clean build-image build-xpkg install-local local-clean xpkg-yaml
 
 # ====================================================================================
 # Special Targets
