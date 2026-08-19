@@ -24,6 +24,11 @@ func NewClient(apiKey, accountID, endpoint string) *Client {
 	if endpoint == "" {
 		endpoint = "https://app.harness.io"
 	}
+	// API keys sourced from Kubernetes Secrets commonly carry a trailing
+	// newline/whitespace. Trim it so the value is a valid HTTP header field
+	// value; Go's http.Client otherwise rejects the X-Api-Key header with
+	// "invalid header field value".
+	apiKey = strings.TrimSpace(apiKey)
 	return &Client{
 		APIKey:     apiKey,
 		AccountID:  accountID,
