@@ -9,14 +9,16 @@ ARG GOSUMDB=sum.golang.org
 ARG GONOSUMDB=""
 ARG MODULE_PATH=github.com/jeremywyx/provider-harness
 ARG VERSION=0.0.0
+# BUILDARCH (amd64/arm64) is provided by Kaniko (--build-arg BUILDARCH=${ARCH})
+# and by buildx. Used to cross-compile the Go binary for the target arch; Kaniko
+# does not run per-arch emulated builds, so GOARCH must be set explicitly.
+ARG BUILDARCH
 
 WORKDIR /src
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+RUN go mod download
 COPY . .
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath \
+RUN CGO_ENABLED=0 GOARCH=${BUILDARCH} go build -trimpath \
     -ldflags="-s -w -X ${MODULE_PATH}/internal/version.Version=${VERSION}" \
     -o /out/harness-provider ./cmd/provider
 
