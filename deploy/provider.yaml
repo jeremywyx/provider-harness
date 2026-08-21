@@ -1,0 +1,9 @@
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-harness
+spec:
+  package: <REGISTRY_HOST>/<PROJECT>/provider-harness:<IMAGE_TAG>
+  packagePullPolicy: IfNotPresent
+  packagePullSecrets:
+    - name: <REGISTRY_PULL_SECRET>   # registry credentials for the org control plane
